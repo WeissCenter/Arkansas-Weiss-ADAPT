@@ -13,7 +13,7 @@ on:
 env:
   AWS_REGION: 'us-east-1' # set this to your preferred AWS region, e.g. us-west-1
   ECR_REPOSITORY: 'ade-prod-viewersitestack-adeprodviewersitestackrepo2566940a-bdagudlaycas' # set this to your Amazon ECR repository name
-  ECS_SERVICE: '' # set this to your Amazon ECS service name
+  ECS_SERVICE: 'ade-prod-ViewerSiteStack-adeprodViewerSiteStackServiceE59B7130-vHcB2A8YhGNa' # set this to your Amazon ECS service name
   ECS_CLUSTER: 'ade-prod-ViewerSiteStack-adeprodViewerSiteStackClusterBBE6FCEF-VslNXeBlczO2' # set this to your Amazon ECS cluster name
   ECS_TASK_DEFINITION: 'task-definition.json'
   ECS_TASK_DEFINITION_NAME: 'adeprodViewerSiteStackadeprodViewerSiteStackTaskDefinition48D34FFF' # set this to your Amazon ECS task definition name
