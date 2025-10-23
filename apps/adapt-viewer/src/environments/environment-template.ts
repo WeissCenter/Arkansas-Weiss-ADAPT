@@ -5,4 +5,7 @@ export const environment = {
   appDomain: '',
   defaultContent: 'assets/text/en/viewer-content-text.json',
   API_URL: '',
+  logoPath: 'assets/shared/logos/states/ar',
+  logoExtension: 'png',
+  copyrightText: 'The State of Arkansas.',
 };
