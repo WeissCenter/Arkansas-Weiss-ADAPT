@@ -11,7 +11,7 @@ export const environment = {
   clientId: '26mm5pn3ofmu3d5k5f487oojlp',
   contentRoot: 'assets/text',
   contentFileName: 'admin-content-text.json',
-  appDomain: 'ose-adapt-admin.ade.arkansas.gov',  //'ose-adapt.ade.arkansas.gov',
+  appDomain: 'ose-adapt-admin.ade.arkansas.gov',
   enforceLogin: true,
   envLabel: 'Prod',
   enforceRole: true,
@@ -22,5 +22,8 @@ export const environment = {
   },
   loginContent: 'assets/content-labels.json',
   pagesContent: 'assets/text/admin-content-text.json',
-  organizationName: 'Office of Special Education'
+  organizationName: '(OSE) Office of Special Education',
+  logoPath: 'assets/shared/logos/states/ar',
+  logoExtension: 'png',
+  copyrightText: 'The State of Arkansas.',
 };
