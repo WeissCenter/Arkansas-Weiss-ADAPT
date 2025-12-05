@@ -152,7 +152,7 @@
             },
             "error": {
               "message": "Something went wrong",
-              "details": "This data is required to load."
+              "details": "Data is required to load. Please try again, or if you need additional help, please reach out to your system administrator."
             },
             "required": {
               "message": "This file is required for upload."
