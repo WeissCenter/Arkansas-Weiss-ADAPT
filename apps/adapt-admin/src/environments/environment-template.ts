@@ -22,8 +22,8 @@ export const environment = {
   },
   loginContent: 'assets/content-labels.json',
   pagesContent: 'assets/text/admin-content-text.json',
-  organizationName: 'User Organization',
-  logoPath: 'assets/shared/logos/generic',
-  logoExtension: 'svg',
-  copyrightText: 'AEM Corporation.',
+  organizationName: '(OSE) Office of Special Education',
+  logoPath: 'assets/shared/logos/states/ar',
+  logoExtension: 'png',
+  copyrightText: 'The State of Arkansas.',
 };
