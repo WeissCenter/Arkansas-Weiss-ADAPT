@@ -1,10 +1,10 @@
 export const environment = {
   envLabel: 'Prod',
-  contentRoot: 'assets/text/generic',
+  contentRoot: 'assets/text/ar',
   contentFileName: 'viewer-content-text.json',
   appDomain: '',
   API_URL: '',
-  logoPath: 'assets/shared/logos/generic',
-  logoExtension: 'svg',
-  copyrightText: 'AEM Corporation.',
+  logoPath: 'assets/shared/logos/states/ar',
+  logoExtension: 'png',
+  copyrightText: 'The State of Arkansas.',
 };

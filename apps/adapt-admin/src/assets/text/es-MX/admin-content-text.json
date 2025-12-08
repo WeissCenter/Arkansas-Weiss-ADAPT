@@ -144,7 +144,7 @@
             },
             "error": {
               "message": "Algo salió mal",
-              "details": "Estos datos son necesarios para cargar."
+              "details": "Se requieren datos para cargar. Inténtelo de nuevo o, si necesita ayuda adicional, comuníquese con el administrador de su sistema."
             },
             "required": {
               "message": "Este archivo es necesario para la carga."
