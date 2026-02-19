@@ -25,5 +25,6 @@ export const environment = {
   organizationName: '(OSE) Office of Special Education',
   logoPath: 'assets/shared/logos/states/ar',
   logoExtension: 'png',
+  logoStyleClass: 'width-card-lg',
   copyrightText: 'The State of Arkansas.',
 };
