@@ -13,11 +13,11 @@ export class GlossaryService {
   api: string;
   private glossaryResource = resource({
     request: () => ({
-      settings: this.settings.getSettingsSignal(),
+      settings: this.settings.getSettingsSignal()(),
     }),
     loader: async ({ request, abortSignal }) => {
       const { settings } = request;
-      const langs = settings().supportedLanguages || ['en'];
+      const langs = settings.supportedLanguages || ['en'];
       const glossarySet: { [lang: string]: { [key: string]: IGlossaryTerm } } = {};
       for (const lang of langs) {
         glossarySet[lang] = await this.getGlossaryFromApi(this.api, lang);

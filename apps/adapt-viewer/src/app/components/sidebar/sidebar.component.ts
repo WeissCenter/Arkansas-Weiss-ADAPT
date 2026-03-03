@@ -1,8 +1,8 @@
-import { AfterViewInit, Component, computed, effect, ElementRef, HostBinding, Inject, Input, PLATFORM_ID, ViewChild } from '@angular/core';
+import { afterNextRender, AfterViewInit, Component, computed, effect, ElementRef, HostBinding, Inject, Injector, Input, PLATFORM_ID, ViewChild } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
-import { ModalComponent, SettingsService } from '@adapt/adapt-shared-component-lib';
+import { focusElement, ModalComponent, SettingsService } from '@adapt/adapt-shared-component-lib';
 import { environment } from '../../../environments/environment';
 
 import { DOCUMENT } from '@angular/common';
@@ -69,7 +69,8 @@ export class ViewerSidebarComponent implements AfterViewInit {
     private center: WeissAccessibilityCenterService,
     public settings: SettingsService,
     public language: LanguageService,
-    @Inject(DOCUMENT) private document: Document
+    @Inject(DOCUMENT) private document: Document,
+    private injector: Injector
   ) {
 
     this.router.events.subscribe((event) => {
@@ -119,6 +120,13 @@ export class ViewerSidebarComponent implements AfterViewInit {
 
   public handleLangChange(lang: string) {
     this.language.changeLanguage(lang);
+    
+    // Restore focus to close button after language change causes content re-render
+    // This addresses accessibility requirement for focus management during language switching
+    afterNextRender(() => {
+      const closeButton = this.document.getElementById('adaptSidePanelCloseButton');
+      focusElement(closeButton);
+    }, { injector: this.injector });
   }
 
   public onSidePanelStatusChange(isOpen: boolean) {
