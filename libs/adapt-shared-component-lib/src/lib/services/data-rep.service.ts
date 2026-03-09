@@ -349,6 +349,9 @@ export class DataRepService {
       const reportCodeValue = content.chart.dataRetrievalOperations[0].arguments.find((arg: any) => arg.field === 'ReportCode')?.value;
       const formattedReportCodeValue = Array.isArray(reportCodeValue) ? reportCodeValue[0] : reportCodeValue;
       fileSpec = formattedReportCodeValue;
+
+      // remove leading 'c' character from filespec if present
+      fileSpec = fileSpec.replace(/^[cC]/, '');
     } else {
       console.warn('No fileSpec or ReportCode found in content');
     }

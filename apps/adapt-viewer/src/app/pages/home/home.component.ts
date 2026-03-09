@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, OnInit, signal, Signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, computed, NgZone, OnInit } from '@angular/core';
 
 import { QuestionContentText } from '../../models/content-text.model';
 import { ViewerPagesContentService } from '../../services/content/viewer-pages-content.service';
@@ -47,7 +47,9 @@ export class HomeComponent implements OnInit {
     public viewerPagesContentService: ViewerPagesContentService,
     private adaptDataService: AdaptDataService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private zone: NgZone,
+    private cdr: ChangeDetectorRef
   ) {
 
     this.subscribeToReportsListener();
@@ -474,13 +476,12 @@ export class HomeComponent implements OnInit {
 
     this.adaptDataService.getReportsListener().subscribe((reports) => {
       //this.logger.debug('Getting notification of updated reports from service', reports?.length);
+      this.zone.run(() => {
+        this.listOfAllReports = reports.slice(0, 5);
 
-      this.listOfAllReports = reports.slice(0, 5);
-
-      console.log('listOfAllReports', this.listOfAllReports);
-
-      this.setReportsLoadingStatus(true);
-
+        this.setReportsLoadingStatus(true);
+        this.cdr.markForCheck();
+      });
     });
   }
 
