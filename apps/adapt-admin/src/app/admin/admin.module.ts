@@ -35,7 +35,6 @@ import { StepsIndicatorStepComponent } from './components/steps-indicator-step/s
 import { ValueLabelPipe } from './pipes/value-label.pipe';
 import { S3FileSizePipe } from './pipes/s3-file-size.pipe';
 import { SettingsComponent } from './pages/settings/settings.component';
-import { InPageNavigationComponent } from './components/in-page-navigation/in-page-navigation.component';
 import { AccessibilitySettingsComponent } from './pages/settings/accessibility-settings/accessibility-settings.component';
 import { ReportModalComponent } from './components/report-modal/report-modal.component';
 import { ListItemReportComponent } from './components/list-item-report/list-item-report.component';
@@ -64,6 +63,8 @@ import { AdaptDataViewService } from '@adapt-apps/adapt-admin/src/app/services/a
 import { AdaptReportService } from '@adapt-apps/adapt-admin/src/app/services/adapt-report.service';
 import { TemplateService } from '@adapt-apps/adapt-admin/src/app/services/template.service';
 import { ValidationService } from '../services/validation.service';
+import { DataCollectionTemplateService } from '../services/data-collection-template.service';
+import { ReportTemplateService } from '../services/report-template.service';
 
 @NgModule({
   declarations: [
@@ -98,7 +99,6 @@ import { ValidationService } from '../services/validation.service';
     ValueLabelPipe,
     S3FileSizePipe,
     SettingsComponent,
-    InPageNavigationComponent,
     AccessibilitySettingsComponent,
     ReportModalComponent,
     ListItemReportComponent,
@@ -140,6 +140,8 @@ import { ValidationService } from '../services/validation.service';
     AdaptDataViewService,
     AdaptReportService,
     TemplateService,
+    DataCollectionTemplateService,
+    ReportTemplateService,
     ValidationService
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],

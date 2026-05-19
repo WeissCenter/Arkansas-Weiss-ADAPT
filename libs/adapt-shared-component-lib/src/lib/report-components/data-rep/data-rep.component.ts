@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 
 import { chartExplainTemplateParse, LanguageCode } from '@adapt/types';
 import { xlsx_delete_row } from '../../util';
+import { focusElement } from '../../util/focus-management.util';
 
 @Component({
   selector: 'lib-adapt-data-rep',
@@ -21,8 +22,8 @@ import { xlsx_delete_row } from '../../util';
 export class DataRepComponent implements OnInit, OnChanges {
   @ViewChild('explainationRegion') explainationRegion!: ElementRef;
   @ViewChild('explanationSwitch') explanationSwitch!: ElementRef;
-  @ViewChild('glossarySwitch') glossarySwitch!: ElementRef;
   @ViewChild('dataModal') dataModal!: ElementRef;
+  @ViewChild('dataModalHeading') dataModalHeading!: ElementRef<HTMLHeadingElement>;
   @ViewChild('dataModalCloseBtn') dataModalCloseBtn!: ElementRef;
   @ViewChild('dataModalSwitch') dataModalSwitch!: ElementRef;
   @ViewChild('bars') barPanel!: ElementRef;
@@ -63,6 +64,8 @@ export class DataRepComponent implements OnInit, OnChanges {
   showGlossaryBtn = false;
   glossaryIdsString = '';
   dataRepSettings!: DataRepSettings;
+  shouldAnnouncePlainLanguage = false;
+  isDataModalOpen = false;
 
   $fileSpec = computed(() => {
     return this.dataRepService.getFileSpecFromBarChartContent(this.raw);
@@ -227,68 +230,11 @@ export class DataRepComponent implements OnInit, OnChanges {
     );
   }
 
-  // Placeholder for teardown function; will be replaced when tab listeners are set up
-  private teardownTabListeners: () => void = () => {
-    // intentionally left blank
-  };
-
   togglePlainLanguage() {
     this.dataRepSettings.showPlainLanguage = !this.dataRepSettings.showPlainLanguage;
     this.dataRepService.saveSettingsLocally(this.dataRepSettings);
-    // Remove old listeners (if any)
-    this.teardownTabListeners?.();
-    if (this.dataRepSettings.showPlainLanguage) {
-      this.teardownTabListeners = this.dataRepService.setupTabbing(true, {
-        region: this.explainationRegion,
-        backwardTrigger: this.explanationSwitch,
-        forwardTrigger: this.glossarySwitch,
-      });
-    } else {
-      // Restore focus to toggle
-      this.explanationSwitch.nativeElement.focus();
-    }
-  }
-
-  setupTabbing() {
-    if (this.dataRepSettings.showPlainLanguage) {
-      this.explainationRegion?.nativeElement.addEventListener('keydown', this.handleTabFromPanel);
-      this.explanationSwitch?.nativeElement.addEventListener('keydown', this.handleTabFromPlainLanguageBtn);
-      this.glossarySwitch?.nativeElement.addEventListener('keydown', this.handleTabFromGlossaryBtn);
-    } else {
-      this.explanationSwitch?.nativeElement.focus();
-      this.explainationRegion?.nativeElement.removeEventListener('keydown', this.handleTabFromPanel);
-      this.explanationSwitch?.nativeElement.removeEventListener('keydown', this.handleTabFromPlainLanguageBtn);
-      this.glossarySwitch?.nativeElement.removeEventListener('keydown', this.handleTabFromGlossaryBtn);
-    }
-  }
-
-  handleTabFromPanel = (event: KeyboardEvent) => {
-    // Handle forward tab (Tab without Shift)
-    if (event.key === 'Tab' && !event.shiftKey) {
-      event.preventDefault();
-      this.glossarySwitch.nativeElement.focus();
-    }
-    // Handle backward tab (Shift + Tab)
-    else if (event.key === 'Tab' && event.shiftKey) {
-      event.preventDefault();
-      this.explanationSwitch.nativeElement.focus();
-    }
-  };
-
-  handleTabFromPlainLanguageBtn = (event: KeyboardEvent) => {
-    // Handle forward tab (Tab without Shift)
-    if (event.key === 'Tab' && !event.shiftKey) {
-      event.preventDefault();
-      this.explainationRegion.nativeElement.focus();
-    }
-  };
-
-  handleTabFromGlossaryBtn = (event: KeyboardEvent) => {
-    // Handle backward tab (Shift + Tab)
-    if (event.key === 'Tab' && event.shiftKey) {
-      event.preventDefault();
-      this.explainationRegion.nativeElement.focus();
-    }
+    // Only announce when user explicitly toggles explain on.
+    this.shouldAnnouncePlainLanguage = this.dataRepSettings.showPlainLanguage;
   };
 
   toggleGlossary() {
@@ -303,9 +249,9 @@ export class DataRepComponent implements OnInit, OnChanges {
     // ) as NodeListOf<HTMLElement>;
     // this.firstFocusableElement = focusableElements[0];
     // this.lastFocusableElement = focusableElements[focusableElements.length - 1];
-
-    this.dataModalCloseBtn.nativeElement.focus();
+    focusElement(this.dataModalHeading.nativeElement, { preventScroll: true, removeTabindexOnBlur: false });
     this.dataModal.nativeElement.addEventListener('keydown', this.trapTabKey);
+    this.isDataModalOpen = true;
     this.dataModalStateChange.emit(true);
   }
 
@@ -334,6 +280,7 @@ export class DataRepComponent implements OnInit, OnChanges {
   closeModal() {
     this.dataModal.nativeElement.hidden = true;
     this.dataModal.nativeElement.removeEventListener('keydown', this.trapTabKey);
+    this.isDataModalOpen = false;
     this.dataModalSwitch.nativeElement.focus(); // Return focus to the element that opened the modal
     this.dataModalStateChange.emit(false);
   }
@@ -355,14 +302,7 @@ export class DataRepComponent implements OnInit, OnChanges {
         `(${this.content?.actions?.['suppressed']})`
       );
       this.showGlossaryBtn = this.dataRepService.checkForDefinitions(this.data);
-      this.noDataSummary = this.dataRepService.generatePlainLanguageForZeroTotalItems(this.raw, this.lang);
-    }
-  }
-
-  ngOnDestroy(): void {
-    // Clean up tab listeners if they were set up
-    if (this.teardownTabListeners) {
-      this.teardownTabListeners();
+      this.noDataSummary = this.dataRepService.generatePlainLanguageForZeroTotalItems(this.raw, this.lang, this.content?.actions?.['report-filter-no-data']);
     }
   }
 
@@ -387,8 +327,14 @@ export class DataRepComponent implements OnInit, OnChanges {
 
       this.noData = totalSelectTotalIsZero && totalSelectHasNoData;
     } else {
-      const select = this.raw.chart.data[0].value || this.raw.chart.data;
-
+      if (
+        (Array.isArray(this.raw.chart.data) && this.raw.chart.data.length === 0) ||
+        (this.raw.chart.data[0].value && Array.isArray(this.raw.chart.data[0].value) && this.raw.chart.data[0].value.length === 0)
+      ) {
+        this.noData = true;
+        return;
+      }
+      const select = this.raw.chart.data[0].value && Array.isArray(this.raw.chart.data[0].value) ? this.raw.chart.data[0].value : this.raw.chart.data;
       this.noData =
         select?.length <= 0 ||
         select.every((item: any) => {
