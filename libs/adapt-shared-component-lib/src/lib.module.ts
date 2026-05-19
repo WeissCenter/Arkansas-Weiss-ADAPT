@@ -3,7 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { A11yModule } from '@angular/cdk/a11y';
 import { RouterModule } from '@angular/router';
-import { GlossaryPipe, PaginatePipe } from './lib/pipes';
+import { GlossaryPipe, OkinaPipe, PaginatePipe } from './lib/pipes';
 import { EditableDirective } from './lib/directive';
 import { DataRepGroupedComponent } from './lib/report-components/data-rep-grouped/data-rep-grouped.component';
 import { ModalComponent } from './lib/components/modal/modal.component';
@@ -38,6 +38,7 @@ import { AlertComponent } from './lib/components/alert/alert.component';
 import { CheckboxComponent } from './lib/form-components/checkbox/checkbox.component';
 import { SecondaryNavigationComponent } from './lib/components/secondary-navigation/secondary-navigation.component';
 import { SecondaryNavigationItemComponent } from './lib/components/secondary-navigation-item/secondary-navigation-item.component';
+import { InPageNavigationComponent } from './lib/components/in-page-navigation/in-page-navigation.component';
 import { FieldLengthSortPipe } from './lib/pipes/field-length-sort.pipe';
 import { InlineSvgComponent } from './lib/components/inline-svg/inline-svg.component';
 import { SidePanelComponent } from './lib/components/side-panel/side-panel.component';
@@ -51,6 +52,7 @@ import { DataRepComparisonTriggerComponent } from './lib/report-components/data-
 import { DataRepComparisonControlsComponent } from './lib/report-components/data-rep-comparison/controls/data-rep-comparison-controls.component';
 import { DataRepService } from './lib/services/data-rep.service';
 import { FilterMissingPropertyPipe } from './lib/pipes/filter-missing-property.pipe';
+import { SkipToComponent } from './lib/components/skip-to/skip-to.component';
 
 @NgModule({
   declarations: [
@@ -84,6 +86,7 @@ import { FilterMissingPropertyPipe } from './lib/pipes/filter-missing-property.p
     DataRepComponent,
     GridViewComponent,
     GlossaryPipe,
+    OkinaPipe,
     FilterMissingPropertyPipe,
     DataRepGroupedComponent,
     PaginationComponent,
@@ -91,6 +94,7 @@ import { FilterMissingPropertyPipe } from './lib/pipes/filter-missing-property.p
     EditableDirective,
     SecondaryNavigationComponent,
     SecondaryNavigationItemComponent,
+    InPageNavigationComponent,
     FieldLengthSortPipe,
     InlineSvgComponent,
     SidePanelComponent,
@@ -98,13 +102,15 @@ import { FilterMissingPropertyPipe } from './lib/pipes/filter-missing-property.p
     StripQuotesPipe,
     DataRepComparisonComponent,
     DataRepComparisonTriggerComponent,
-    DataRepComparisonControlsComponent
+    DataRepComparisonControlsComponent,
+    SkipToComponent
   ],
   exports: [
     HElementComponent,
     InlineSvgComponent,
     SecondaryNavigationComponent,
     SecondaryNavigationItemComponent,
+    InPageNavigationComponent,
     CheckboxComponent,
     AlertComponent,
     ReportConditionPipe,
@@ -135,6 +141,7 @@ import { FilterMissingPropertyPipe } from './lib/pipes/filter-missing-property.p
     DataRepComponent,
     QuickSummaryComponent,
     GlossaryPipe,
+    OkinaPipe,
     FilterMissingPropertyPipe,
     GridViewComponent,
     EditableDirective,
@@ -145,7 +152,8 @@ import { FilterMissingPropertyPipe } from './lib/pipes/filter-missing-property.p
     PageAlertComponent,
     DataRepComparisonComponent,
     DataRepComparisonTriggerComponent,
-    DataRepComparisonControlsComponent
+    DataRepComparisonControlsComponent,
+    SkipToComponent
   ],
   providers: [AlertService, FilterPanelService, DecimalPipe, DataRepService],
   imports: [CommonModule, NgxMaskDirective, NgxMaskPipe, RouterModule, FormsModule, ReactiveFormsModule, A11yModule],

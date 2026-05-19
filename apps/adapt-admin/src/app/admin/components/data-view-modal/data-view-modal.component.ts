@@ -53,6 +53,7 @@ import { NGXLogger } from 'ngx-logger';
 import { AdaptDataViewService } from '@adapt-apps/adapt-admin/src/app/services/adapt-data-view.service';
 import { AdaptReportService } from '@adapt-apps/adapt-admin/src/app/services/adapt-report.service';
 import { ValidationService } from '../../../services/validation.service';
+import { DataCollectionTemplateService } from '../../../services/data-collection-template.service';
 
 @Component({
   selector: 'adapt-data-view-modal',
@@ -114,7 +115,9 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     { value: 'other', label: 'Other' },
   ];
 
-  public typeOptions: Observable<{label: any, value: any}[]>; //  = this.data.getTemplates('DataCollection').pipe(map((result => result.map((temp: any) => ({label: temp.name,  value: temp.id.replace("ID#", "")})))))
+  public typeOptions: Signal<{label: any, value: any}[]>;
+  public reportingYearOptions: Observable<{label: any, value: any}[]>; // = this.data.getTemplates('DataCollection').pipe(map((result => result.map((temp: any) => ({label: temp.name,  value: temp.id.replace("ID#", "")})))))
+  public dataCollectionTypeToYearMap: Observable<Record<string, string[]>>;
 
   //
   // [
@@ -163,7 +166,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
   pageContentLoaded = false;
 
 
-  @HostListener('window:beforeunload')
+  @HostListener('window:beforeunload', ['$event'])
   beforeUnload(event: any) {
     if (this.baseDataViewForm.dirty) {
       event.returnValue = 'You have unsaved changes!';
@@ -177,6 +180,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     private adaptValidationService: ValidationService,
     private adaptDataViewService: AdaptDataViewService,
     private adaptReportService: AdaptReportService,
+    private dataCollectionTemplateService: DataCollectionTemplateService,
     private location: LocationStrategy,
     private alert: AlertService,
     private idle: Idle,
@@ -192,10 +196,9 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
 
   ngOnInit() {
     this.logger.debug('Inside data-view-modal component ngOnInit');
-
-    this.typeOptions = this.adaptDataService.getTemplates('DataCollection').pipe(map((result => result.map((temp: any) => ({label: temp.name,  value: temp.id.replace("ID#", "")})))))
-
     this.createDataViewForm();
+    
+    this.typeOptions = this.dataCollectionTemplateService.idsWithLabels;
 
     this.location.onPopState((event) => {
       if (event.type === 'popstate') this.internalClose();
@@ -213,6 +216,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
 
     this.baseDataViewForm = this.fb.group({
       type: this.fb.control('', [Validators.required]),
+      reportingYear: this.fb.control('', [Validators.required]),
       source: this.fb.control('collection', [Validators.required]),
       database: this.fb.control('', [Validators.required]),
       typeFields: this.fb.group({}),
@@ -221,7 +225,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
       description: this.fb.control('', [Validators.required]),
     });
 
-    this.name.setAsyncValidators([uniqueNameValidator('DataView', this.adaptDataService, this.mode)]);
+    this.name.setAsyncValidators([uniqueNameValidator('DataView', this.adaptDataService, this.mode, 'name', { idField: 'dataViewID', idValue: this.currentDataView?.dataViewID || '' })]);
     this.name.disable({ emitEvent: false });
     this.description.disable({ emitEvent: false });
     this.database.disable({ emitEvent: false });
@@ -235,9 +239,10 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
   private initializeFormValueChangeListeners() {
     this.logger.debug('Inside data-view-modal initializeFormValueChangeListeners');
 
-    const typeChanges = this.type.valueChanges
-      .pipe(startWith(this.type.value), pairwise())
-      .subscribe(this.onTypeChange.bind(this));
+    const typeChanges = combineLatest([
+      this.type.valueChanges,
+      this.reportingYear.valueChanges,
+    ]).subscribe(this.onTypeChange.bind(this));
 
     const sourceSub = this.source.valueChanges.subscribe((source) => {
       if (source === 'database') {
@@ -328,6 +333,13 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
       }
     });
 
+        // when the type form value changes or the dataCollectionType to year map is loaded/updated, update the reporting year options
+    this.reportingYearOptions = this.type.valueChanges.pipe(
+      switchMap(type => {
+        if (!type) return of([]);
+        return of(this.dataCollectionTemplateService.getYearsForID(type).map(year => ({ label: `${(parseInt(year) - 1)}-${year}`, value: year })).sort((a, b) => Number(b.value) - Number(a.value)));
+      })
+    );
     this.subscriptions.push(typeChanges, sourceSub, duplicateCheckSub, justificationReasonSub, timeOutSub);
   }
 
@@ -405,7 +417,6 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     if (!this.currentDataView) {
       await this.initDataView();
     }
-    console.log('currentDataView: ', this.currentDataView);
 
     this.currentDataView!.data.files[index].location = file?.name ?? '';
 
@@ -470,6 +481,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
       name: this.name.value || (this.currentTemplate?.name ?? ''),
       description: this.description.value || (this.currentTemplate?.dataViewDescription ?? ''),
       dataViewType: this.source.value || 'collection',
+      reportingYear: this.reportingYear.value || '',
       data: {
         id: crypto.randomUUID(),
         dataSource: this.database.value,
@@ -484,8 +496,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
         const typeField = this.typeFields.get(field);
         this.logger.debug('Inside data-view-modal getSaveInput, typeField: ', typeField);
         const templateField = this.currentTemplate.fields[index].options.find(option => option.value === typeField?.value);
-
-        defaultInput.data.fields.push({ id: field, label: templateField.label ?? '', value: typeField?.value });
+        defaultInput.data.fields.push({ id: field, label: templateField?.label ?? '', value: typeField?.value });
       }
 
       for (const [index, file] of this.currentTemplate.files.entries()) {
@@ -541,21 +552,23 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     );
   }
 
-  public async onTypeChange([prev, next]: [string, string]) {
+  public async onTypeChange([type, reportingYear]: [string, string]) {
 
-    this.logger.debug('Inside data-view-modal component onTypeChange, prev: ', prev, ', next: ', next);
-    const { value } = this.type;
+    this.logger.debug('Inside data-view-modal component onTypeChange, type: ', type, ', reportingYear: ', reportingYear);
+    // if (type !== reportingYear) {
+    //   this.logger.debug('remove all type fields controls');
+    //   Object.keys(this.typeFields.controls).forEach((key) => this.typeFields.removeControl(key));
 
-    if (prev !== next) {
-      this.logger.debug('remove all type fields controls');
-      Object.keys(this.typeFields.controls).forEach((key) => this.typeFields.removeControl(key));
+    //   this.files.clear({ emitEvent: false });
+    // }
 
-      this.files.clear({ emitEvent: false });
+    if (!type || !reportingYear){
+      this.logger.debug('type or reportingYear is falsy, skipping template load');
+      return;
     }
 
     //dev-AdaptTemplates
-    this.currentTemplate = await firstValueFrom(this.adaptDataService.getTemplate('DataCollection', value));
-
+    this.currentTemplate = await firstValueFrom(this.adaptDataService.getTemplate('DataCollection', type, reportingYear));
     this.logger.debug('currentTemplate: ', this.currentTemplate);
 
     // need to remove the reporting level field from the template to support ticket WEISS-1343
@@ -584,7 +597,12 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     }
 
     for (const [index, file] of this.currentTemplate!.files.entries()) {
-      const control = this.fb.control(null, [Validators.required], [this.validateFile(index)]);
+      let fileValue: File | null = null;
+      if (this.currentDataView) {
+        const existingFile = this.currentDataView.data.files.find(f => f.id === file.id);
+        fileValue = new File([], existingFile?.location ?? '');
+      }
+      const control = this.fb.control(fileValue, [Validators.required], [this.validateFile(index)]);
 
       this.files.push(control, { emitEvent: false });
 
@@ -643,7 +661,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
         if (!this.name.dirty && this.mode === PageMode.CREATE) {
           this.setName();
         }
-
+        this.name.setAsyncValidators([uniqueNameValidator('DataView', this.adaptDataService, this.mode, 'name', { idField: 'dataViewID', idValue: this.currentDataView?.dataViewID || '' })]);
         this.name.enable();
         this.description.enable();
         break;
@@ -655,6 +673,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     this.logger.debug('Inside data-view-modal setName to: ', this.currentTemplate?.name);
 
     let newName = this.currentTemplate?.name;
+    newName = newName + ` - ${(+(this.reportingYear.value) - 1)}-${this.reportingYear.value}`;
 
     Object.keys(this.typeFields.controls).forEach(fieldId => {
       const control = this.typeFields.get(fieldId); // Get the AbstractControl instance
@@ -813,22 +832,19 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     this.saving = false;
     this.saved = true;
 
-    if(startDataPull && this.currentDataView?.status !== DataSetQueueStatus.MISSING_DATA && !this.baseDataViewForm.invalid){
-
+    // TODO: determine logic for unchanged files (so we don't trigger unnecessary data pulls) - currently we just check if there are any files without a location which means they haven't been uploaded yet
+    // TODO: determine logic for starting the data pull based on database connection
+    if (startDataPull && this.currentDataView?.status !== DataSetQueueStatus.MISSING_DATA && this.currentDataView?.data.files.every((file) => file.location.length > 0)) {
     const name = this.name.value;
 
-    this.adaptDataViewService.doDataPull(this.currentDataView!.dataViewID).pipe(
-        catchError((err) => {
-          this.alert.add({type: 'error', title: 'Data View Save Failed', body: `Data View Save for ${name} failed: ${err}`});
-          return err;
-        })
-      )
-      .subscribe(() => {
-        this.alert.add({type: 'success', title: 'Data View Save Complete',
-                        body: `Data View ${name} has been saved successfully. You will receive a notification when data view is ready for use.`
-                       });
-      });
-
+      try {
+        await firstValueFrom(this.adaptDataViewService.doDataPull(this.currentDataView!.dataViewID));
+        this.alert.add({type: 'success', title: 'Data View Save Complete', body: `Data View ${name} has been saved successfully. You will receive a notification when data view is ready for use.`});
+      } catch (err) {
+        this.logger.error(`Data pull failed for data view ${name} with ID ${this.currentDataView!.dataViewID}: `, err);
+        this.alert.add({type: 'error', title: 'Data View Save Failed', body: `Data View Save for ${name} failed: ${err}`});
+        return err;
+      }
     }
 
     if (close) {
@@ -837,6 +853,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
       this.reset();
       this.opened = false;
     }
+    return;
   }
 
   public async internalClose(cancel = false, globalClose = false) {
@@ -848,8 +865,14 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
       this.modal.close();
     }
 
-    if (cancel && this.currentDataView) await firstValueFrom(this.adaptDataViewService.deleteDataView(this.currentDataView.dataViewID));
-
+    if (cancel && this.currentDataView) {
+      try {
+        await firstValueFrom(this.adaptDataViewService.deleteDataView(this.currentDataView.dataViewID));
+      } catch (err) {
+        this.logger.error('Error deleting data view on cancel: ', err);
+      }
+    }
+    this.logger.info('resetting from internalClose')
     this.reset();
   }
 
@@ -884,7 +907,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     //   this.ngOnDestroy()
   }
 
-  public confirmEdits() {
+  public async confirmEdits() {
     if (this.editJustificationForm.invalid) {
       return;
     }
@@ -892,10 +915,8 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     const hasFileChanges = Object.keys(this.changes).findIndex((change) => change.startsWith('files-')) !== -1;
 
     this.confirmModal.close();
-    this.doSave(true, true, hasFileChanges || this.reloadData);
+    await this.doSave(true, true, hasFileChanges || this.reloadData);
   }
-
-  reportingYear: string;
 
   public async open(dataView?: DataViewModel, viewMode = false, pageIndex = 0, dataSource = '') {
     this.logger.debug('Inside data-view-modal component open, dataView: ', dataView, ', viewMode: ', viewMode, ', pageIndex: ', pageIndex, ', dataSource: ', dataSource);
@@ -908,21 +929,15 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     if (dataView) {
       this.mode = viewMode ? PageMode.VIEW : PageMode.EDIT;
 
-      this.name.setAsyncValidators([uniqueNameValidator('DataView', this.adaptDataService, this.mode)]);
+      this.name.setAsyncValidators([uniqueNameValidator('DataView', this.adaptDataService, this.mode, 'name', { idField: 'dataViewID', idValue: this.currentDataView?.dataViewID || '' })]);
 
       this.currentDataView = dataView;
-
-      //this.logger.debug('currentDataView: ', this.currentDataView);
-      //this.logger.debug('currentTemplate: ', this.currentTemplate);
+      this.currentTemplate = await firstValueFrom(this.adaptDataService.getTemplate('DataCollection', dataView.data.id, dataView?.reportingYear));
 
       // Set reporting year as bespoke value to fit properly in expected template
-      if (this.currentDataView.data.fields) {
-        this.currentDataView.data.fields.forEach((field) => {
-          if (field.id === 'reportingYear') {
-            this.reportingYear = field.value;
-          }
-        });
-      }
+      const reportingYear = dataView.reportingYear || dataView.data.fields.find((field) => field.id === 'reportingYear')?.value || ''
+      const type = dataView.data.id || (dataView as any).type;
+      this.baseDataViewForm.patchValue({ reportingYear, type });
 
       if (this.currentDataView.dataViewType === 'collection') {
         for (const [index, file] of this.currentDataView.data.files.entries()) {
@@ -941,6 +956,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
         typeFields: dataView.data.fields.reduce((accum, val) => Object.assign(accum, { [val.id]: val.value, label: val.label }), {}),
         name: dataView.name,
         description: dataView.description,
+        reportingYear: reportingYear,
       };
 
       this.baseDataViewForm.patchValue(patchedValue, { emitEvent: false });
@@ -964,12 +980,8 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     this.handleCurrentStepNext(1);
 
     requestAnimationFrame(() => {
-      this.source.setValue(dataView?.dataViewType || 'database');
-
-    })
-
-
-
+      this.source.setValue(dataView?.dataViewType || 'collection');
+    });
   }
 
   public close() {
@@ -1115,7 +1127,7 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
         } else if (file.name.endsWith('.csv')) {
           toValidate = xlsx.read(bufferArray, { type: 'string' });
         }
-        const errors = await validate(toValidate, validationTemplate, this.typeFields.getRawValue());
+        const errors = await validate(toValidate, validationTemplate, { reportingYear: this.reportingYear.value, ...this.typeFields.getRawValue() });
         if (errors.length) {
           this.logger.error('File validation errors: ', errors);
           // deduplicate the error types
@@ -1228,6 +1240,10 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
     this.duplicate = undefined;
   }
 
+  public reportingYearString(year: string): string {
+    return `${(parseInt(year) - 1)}-${year}`;
+  }
+
   public openDuplicatePreview() {
     this.logger.debug('Inside data-view-modal component openDuplicatePreview');
 
@@ -1244,6 +1260,9 @@ export class DataViewModalComponent implements OnInit, OnDestroy, AfterContentCh
 
   get type() {
     return this.baseDataViewForm.get('type') as FormControl;
+  }
+  get reportingYear() {
+    return this.baseDataViewForm.get('reportingYear') as FormControl;
   }
   get source() {
     return this.baseDataViewForm.get('source') as FormControl;
